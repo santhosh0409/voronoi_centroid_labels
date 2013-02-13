@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html;charset=utf-8">
+<title>Voronoi Map</title>
+<script src="d3.v2.js"></script>
+</head>
+<style>
+svg { border: solid 1px #666; overflow: hidden; }
+path { fill: white; fill-transparency:.5; stroke: #000; stroke-width:.5; }
+circle { fill:#000; }
+text{ font-family:arial; font-size:9pt; color:#000; }
+</style>
+<body>
+<pre style="display:none" id="random_number">
+"City","Sales","Growth",
+"Chennai",100,0.3,
+"Bangalore",200,0.6,
+"Coimbatore",300,0.9,
+"Hyderabad",180,0.7,
+"Cochin",215,0.5,
+"Mysore",250,0.8,
+"Mangalore",150,0.4,
+"Trivandram",160,0.6,
+"Madurai",190,0.8,
+"Secunderabad",255,0.6,
+</pre>
+<div id="viz"></div>
+<script>
+width = 900, height = 500, points = [],
+rawData = d3.select('#random_number').html(), 
+rows = d3.csv.parse(rawData),
+vertices = rows.map(function(d, i){ return [d.City, (Math.sqrt(d.Sales) / 100) * 3 * width , d.Growth * height]; }),
+px = vertices.map(function(d) { return d[1]; }),
+bounds = d3.geom.polygon([[0, 0], [0, height], [width, height], [width, 0]]),
+geom = d3.geom.voronoi(vertices.map(function(d, i){ return [d[1], d[2]]; } ))
+  .map(function(cell) { return bounds.clip(cell); });
+
+for(var i = 0; i < geom.length; i++) {
+  var voronoiPolygon = geom[i];
+  var centroid = d3.geom.polygon(voronoiPolygon).centroid();
+  if(!isNaN(centroid[0]))
+    points[i] = [centroid[0], centroid[1]];
+}
+  
+color = d3.scale.linear()
+  .domain([d3.min(px), d3.median(px), d3.max(px)])
+  .range(['red', 'yellow', 'green']);
+
+svg = d3.select('#viz')
+  .append('svg')
+  .attr('width', width)
+  .attr('height', height);
+ 
+svg.selectAll('path')
+  .data(geom)
+ .enter().append('path')
+  .attr('d', function(d) { return 'M' + d.join('L') + 'Z'; })
+  .style('fill', function(d, i) { return color(vertices[i][1]); })
+  .on('mouseover', function(d, i){ 
+    d3.select(this).style('stroke', '#000').style('stroke-width', 2.5);
+  })
+  .on('mouseout', function(){ 
+    d3.select(this).style('stroke', '#000').style('stroke-width', 0.5);
+  });
+  
+svg.selectAll('circle')
+  .data(vertices)
+ .enter().append('circle')
+  .attr('transform', function(d) { return 'translate('+ d[1]+','+ d[2] +')'; })
+  .attr('r', 2.5);
+ 
+svg.selectAll('text')
+  .data(points)
+ .enter().append('text')
+  .attr('x', function(d, i){ return  d[0] ; })
+  .attr('y', function(d, i){ return  d[1] ; })
+  .data(vertices)
+  .text(function(d){ return d[0]; });
+</script>
+</body>
+</html>
